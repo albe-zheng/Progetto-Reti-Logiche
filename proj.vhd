@@ -46,20 +46,7 @@ begin
       -- Inizializzazione
       current_state <= RESET;
     elsif rising_edge(i_clk) then
-    	if current_state = RESET then
-    	-- Reset dei canali e del segnale DONE
-      	o_z0 <= (others => '0');
-        o_z1 <= (others => '0');
-        o_z2 <= (others => '0');
-        o_z3 <= (others => '0');
-        o_done <= '0';
-        done_reg <= '0';
-        if i_start = '1' then
-        	next_state <= WAIT_START;
-        else
-        	next_state <= RESET;
-        end if;
-			end if;
+    	current_state <= next_state;
 		end if;
   end process;
 
@@ -74,14 +61,14 @@ begin
 				end if;
 
 			when WAIT_START =>
-				if i_start='0' then
+				if i_start = '0' then
 					next_state <= WAIT_START;
 				else
 					next_state <= READ_INPUT;
 				end if;
 
 			when READ_INPUT =>
-				if i_start='0' then
+				if i_start = '0' then
 					next_state <= DONE;
 				else
 					next_state <= READ_INPUT
