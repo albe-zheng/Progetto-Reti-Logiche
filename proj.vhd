@@ -63,6 +63,7 @@ begin
 					end if;
 	
 				when WAIT_START =>
+					
 					if i_start = '0' then
 						current_state <= WAIT_START;
 					else
@@ -99,7 +100,7 @@ begin
 		end if;
 	end process;
 
-	process(current_state)
+	process(current_state, clock_counter, done_reg)
 	begin
 		
 			case current_state is
@@ -109,21 +110,26 @@ begin
 					internal_z2 <= (others => '0');
 					internal_z3 <= (others => '0');
 					done_reg <= '0';
-					channel <= (others => '0');
-					address <= (others => '0');
-					o_mem_en <= '0';
-
-				when WAIT_START =>
 					clock_counter <= 0;
 					channel <= (others => '0');
 					address <= (others => '0');
+					o_mem_addr <= (others => '0');
+					o_mem_en <= '0';
+
+				when WAIT_START =>
 					done_reg <= '0';
+					clock_counter <= 0;
+					channel <= (others => '0');
+					address <= (others => '0');
+					o_mem_addr <= (others => '0');
 
 				when READ_INPUT_A =>
+					
 					
 						if clock_counter = 2 then
 							--read address
 							address <= address(14 downto 0) & i_w; 
+							clock_counter <= 2;
 						else
 							--read channel
 							channel <= channel(0 downto 0) & i_w;
@@ -152,26 +158,13 @@ begin
 				when DONE =>
 					
 					case channel is
-							when "00" => 
-								internal_z0 <= data_reg;
-								internal_z1 <= internal_z1;
-								internal_z2 <= internal_z2;
-								internal_z3 <= internal_z3;
-							when "01" => 
-								internal_z0 <= internal_z0;
-								internal_z1 <= data_reg;
-								internal_z2 <= internal_z2;
-								internal_z3 <= internal_z3;
-							when "10" => 
-								internal_z0 <= internal_z0;
-								internal_z1 <=	internal_z1;
-								internal_z2 <=  data_reg;
-								internal_z3 <= internal_z3;
-							when "11" => 
-								internal_z0 <= internal_z0;
-								internal_z1 <= internal_z1;
-								internal_z2 <= internal_z2;
-								internal_z3 <= data_reg;
+							when "00" => internal_z0 <= data_reg;
+
+							when "01" => internal_z1 <= data_reg;
+
+							when "10" => internal_z2 <=  data_reg;
+								
+							when "11" => internal_z3 <= data_reg;
 							when others => null;
 						end case;
 									
@@ -183,27 +176,32 @@ begin
 	process (i_clk)
 	begin
 		if(i_rst = '0') then
-			if falling_edge(i_clk) and current_state = READ_MEMORY then
-				data_reg <= i_mem_data;
+			if falling_edge(i_clk) then
+				if current_state = READ_MEMORY then
+				data_reg <= std_logic_vector(unsigned(i_mem_data));
+				elsif current_state = DONE then
+					data_reg <= (others => '0');
+				end if;
 			end if;
 		end if;
 	end process;
 	
 	process (done_reg)
 	begin
-		
 		if done_reg = '1' then
 			o_z0 <= internal_z0;
 			o_z1 <= internal_z1;
 			o_z2 <= internal_z2;
 			o_z3 <= internal_z3;
+			o_done <= '1';
 		else
 			o_z0 <= (others => '0');
 			o_z1 <= (others => '0');
 			o_z2 <= (others => '0');
 			o_z3 <= (others => '0');
+			o_done <= '0';
 		end if;
-		o_done <= done_reg;
+		
 	end process;
 
 end Behavioral;
