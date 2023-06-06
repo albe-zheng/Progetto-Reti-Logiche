@@ -24,7 +24,7 @@ entity project_reti_logiche is
 end project_reti_logiche;
 
 architecture Behavioral of project_reti_logiche is
-	type state_type is (RESET, WAIT_START, READ_INPUT, READ_MEMORY, DONE);
+	type state_type is (RESET, WAIT_START, READ_INPUT_A, READ_INPUT_B, WRITE_ADDRESS, READ_MEMORY, DONE);
 	signal current_state : state_type := RESET;
 	signal next_state : state_type;
 	--segnali per memorizzare i dati internamente, che vengono visualizzati solo quando done = 1
@@ -42,7 +42,7 @@ architecture Behavioral of project_reti_logiche is
 begin
 	o_mem_we <= '0';
 
-	process (i_clk, i_rst, i_start)
+	process (i_clk, i_rst)
 	begin
 		if i_rst = '1' then
 			current_state <= RESET;
@@ -55,7 +55,7 @@ begin
 						current_state <= RESET;
 					else
 						if i_start = '1' then
-							current_state <= READ_INPUT;
+							current_state <= READ_INPUT_A;
 						else
 							current_state <= WAIT_START;
 						end if;
@@ -65,15 +65,27 @@ begin
 					if i_start = '0' then
 						current_state <= WAIT_START;
 					else
-						current_state <= READ_INPUT;
+						current_state <= READ_INPUT_A;
 					end if;
 	
-				when READ_INPUT =>
+				when READ_INPUT_A =>
 					if i_start = '0' then
-						current_state <= READ_MEMORY;
+						current_state <= WRITE_ADDRESS;
 					else
-						current_state <= READ_INPUT;
+						current_state <= READ_INPUT_B;
 					end if;
+				
+				when READ_INPUT_B =>
+					if i_start = '0' then
+					
+						current_state <= WRITE_ADDRESS;
+					else
+						current_state <= READ_INPUT_A;
+					end if;
+
+				when WRITE_ADDRESS =>
+					current_state <= READ_MEMORY;
+
 
 				when READ_MEMORY =>
 					current_state <= DONE;
@@ -86,10 +98,10 @@ begin
 		end if;
 	end process;
 
-	process(current_state, i_clk)
+	process(current_state)
 	begin
 		
-		if rising_edge(i_clk) then
+		
 
 			case current_state is
 				when RESET =>
@@ -105,21 +117,34 @@ begin
 					clock_counter <= 0;
 					done_reg <= '0';
 
-				when READ_INPUT =>
-					if clock_counter = 2 then
-						--read address
-						address <= address(14 downto 0) & i_w; 
-					else
-						--read channel
-						channel <= channel(0 downto 0) & i_w;
-						clock_counter <= clock_counter + 1;
-					end if;
+				when READ_INPUT_A =>
+					
+						if clock_counter = 2 then
+							--read address
+							address <= address(14 downto 0) & i_w; 
+						else
+							--read channel
+							channel <= channel(0 downto 0) & i_w;
+							clock_counter <= clock_counter + 1;
+						end if;
+				
+				when READ_INPUT_B =>
+					
+						if clock_counter = 2 then
+							--read address
+							address <= address(14 downto 0) & i_w; 
+						else
+							--read channel
+							channel <= channel(0 downto 0) & i_w;
+							clock_counter <= clock_counter + 1;
+						end if;
 
-				when READ_MEMORY =>
+
+				when WRITE_ADDRESS =>
 					o_mem_en <= '1';
 					o_mem_addr <= address;
 
-				when DONE =>
+				when READ_MEMORY =>
 					o_mem_en <= '1';
 					case channel is
 						when "00" => 
@@ -145,9 +170,11 @@ begin
 						when others => null;
 					end case;
 					o_mem_en <= '0';
+
+				when DONE =>
 					done_reg <= '1';
 			end case;
-		end if;
+
 	end process;
 
 	process (done_reg)
