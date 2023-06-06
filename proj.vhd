@@ -40,6 +40,8 @@ architecture Behavioral of project_reti_logiche is
 	signal clock_counter : integer range 0 to 2 := 0; --Quando = 2 allora inizio a leggere i bit dell'address
 
 begin
+	o_mem_we <= '0';
+
 	process (i_clk, i_rst, i_start)
 	begin
 		if i_rst = '1' then
@@ -52,7 +54,11 @@ begin
 					if i_rst = '1' then
 						current_state <= RESET;
 					else
-						current_state <= WAIT_START;
+						if i_start = '1' then
+							current_state <= READ_INPUT;
+						else
+							current_state <= WAIT_START;
+						end if;
 					end if;
 	
 				when WAIT_START =>
@@ -68,8 +74,10 @@ begin
 					else
 						current_state <= READ_INPUT;
 					end if;
+
 				when READ_MEMORY =>
 					current_state <= DONE;
+
 				when DONE =>
 					current_state <= WAIT_START;
 			end case;
@@ -78,9 +86,10 @@ begin
 		end if;
 	end process;
 
-	process(current_state, i_w)
-		begin
-			o_mem_we <= '0';
+	process(current_state, i_clk)
+	begin
+		
+		if rising_edge(i_clk) then
 
 			case current_state is
 				when RESET =>
@@ -95,7 +104,7 @@ begin
 				when WAIT_START =>
 					clock_counter <= 0;
 					done_reg <= '0';
-					
+
 				when READ_INPUT =>
 					if clock_counter = 2 then
 						--read address
@@ -105,10 +114,11 @@ begin
 						channel <= channel(0 downto 0) & i_w;
 						clock_counter <= clock_counter + 1;
 					end if;
+
 				when READ_MEMORY =>
 					o_mem_en <= '1';
 					o_mem_addr <= address;
-					
+
 				when DONE =>
 					o_mem_en <= '1';
 					case channel is
@@ -136,8 +146,8 @@ begin
 					end case;
 					o_mem_en <= '0';
 					done_reg <= '1';
-				end case;
-				
+			end case;
+		end if;
 	end process;
 
 	process (done_reg)
