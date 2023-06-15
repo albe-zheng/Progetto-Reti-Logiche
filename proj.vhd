@@ -25,8 +25,8 @@ end project_reti_logiche;
 
 architecture Behavioral of project_reti_logiche is
 	type state_type is (RESET, WAIT_START, READ_INPUT, WRITE_ADDRESS, READ_MEMORY, DONE);
-	signal current_state : state_type := RESET;
-	signal next_state : state_type;
+	signal current_state : state_type;
+	
 	--segnali per memorizzare i dati internamente, che vengono visualizzati solo quando done = 1
 	signal internal_z0 : std_logic_vector(7 downto 0) := (others => '0');
 	signal internal_z1 : std_logic_vector(7 downto 0) := (others => '0');
@@ -49,7 +49,7 @@ architecture Behavioral of project_reti_logiche is
 begin
 	o_mem_we <= '0';
 
-	process (i_clk, i_rst, i_start, current_state)
+	lambda: process (i_clk, i_rst, i_start)
 	begin
 		if i_rst = '1' then
 			current_state <= RESET;
@@ -116,7 +116,7 @@ begin
 			pre_z2 <= internal_z2;
 			pre_z3 <= internal_z3;
 			
-			if current_state = RESET or current_state = DONE  then
+			if current_state = DONE  then
 				channel <= (others => '0');
 				address <= (others => '0');
 				clock_counter <= 0;
@@ -140,7 +140,7 @@ begin
 		end if;
 	end process;
 
-	process(current_state)
+	delta: process(current_state)
 	begin
 		case current_state is
 			when RESET =>
@@ -177,7 +177,7 @@ begin
 		end case;
 	end process;
 	
-	process (i_rst, i_clk)
+	internal_controller: process (i_rst, i_clk)
 	begin
 		if i_rst = '1' then
 			internal_z0 <= (others => '0');
@@ -228,7 +228,7 @@ begin
 		end if;
 	end process;
 
-	process (done_reg)
+	output_controller: process (done_reg)
 	begin
 		if done_reg = '1' then
 			o_z0 <= internal_z0;
